@@ -83,6 +83,11 @@ struct cmsghdr {
         int		cmsg_type;	/* protocol-specific type */
 };
 
+struct sock_txtime {
+	clockid_t	clockid;	/* reference clockid */
+	u16		flags;		/* bit 0: txtime in deadline_mode */
+};
+
 /*
  *	Ancillary data object information MACROS
  *	Table 5-14 of POSIX 1003.1g
