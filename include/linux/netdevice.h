@@ -3379,6 +3379,7 @@ static __always_inline int ____dev_forward_skb(struct net_device *dev,
 
 	skb_scrub_packet(skb, true);
 	skb->priority = 0;
+	skb->tstamp = 0;
 	return 0;
 }
 
