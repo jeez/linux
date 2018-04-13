@@ -1153,6 +1153,7 @@ static int ip_setup_cork(struct sock *sk, struct inet_cork *cork,
 	cork->tos = ipc->tos;
 	cork->priority = ipc->priority;
 	cork->tx_flags = ipc->tx_flags;
+	cork->transmit_time = ipc->sockc.transmit_time;
 
 	return 0;
 }
@@ -1413,6 +1414,7 @@ struct sk_buff *__ip_make_skb(struct sock *sk,
 
 	skb->priority = (cork->tos != -1) ? cork->priority: sk->sk_priority;
 	skb->mark = sk->sk_mark;
+	skb->tstamp = cork->transmit_time;
 	/*
 	 * Steal rt from cork.dst to avoid a pair of atomic_inc/atomic_dec
 	 * on dst refcount
@@ -1495,6 +1497,7 @@ struct sk_buff *ip_make_skb(struct sock *sk,
 	cork->flags = 0;
 	cork->addr = 0;
 	cork->opt = NULL;
+	cork->transmit_time = 0;
 	err = ip_setup_cork(sk, cork, ipc, rtp);
 	if (err)
 		return ERR_PTR(err);
