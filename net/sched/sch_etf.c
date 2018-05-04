@@ -11,6 +11,7 @@
 #include <linux/kernel.h>
 #include <linux/string.h>
 #include <linux/errno.h>
+#include <linux/errqueue.h>
 #include <linux/rbtree.h>
 #include <linux/skbuff.h>
 #include <linux/posix-timers.h>
@@ -124,6 +125,35 @@ static void reset_watchdog(struct Qdisc *sch)
 	qdisc_watchdog_schedule_ns(&q->watchdog, ktime_to_ns(next));
 }
 
+static void report_sock_error(struct sk_buff *skb, u32 err, u8 code)
+{
+	struct sock_exterr_skb *serr;
+	ktime_t txtime = skb->tstamp;
+
+	if (!skb->sk || !(skb->sk->sk_txtime_flags & SK_TXTIME_RECV_ERR_MASK))
+		return;
+
+	skb = skb_clone_sk(skb);
+	if (!skb)
+		return;
+
+	sock_hold(skb->sk);
+
+	serr = SKB_EXT_ERR(skb);
+	serr->ee.ee_errno = err;
+	serr->ee.ee_origin = SO_EE_ORIGIN_LOCAL;
+	serr->ee.ee_type = 0;
+	serr->ee.ee_code = code;
+	serr->ee.ee_pad = 0;
+	serr->ee.ee_data = (txtime >> 32); /* high part of tstamp */
+	serr->ee.ee_info = txtime; /* low part of tstamp */
+
+	if (sock_queue_err_skb(skb->sk, skb))
+		kfree_skb(skb);
+
+	sock_put(skb->sk);
+}
+
 static int etf_enqueue_timesortedlist(struct sk_buff *nskb, struct Qdisc *sch,
 				      struct sk_buff **to_free)
 {
@@ -131,8 +161,10 @@ static int etf_enqueue_timesortedlist(struct sk_buff *nskb, struct Qdisc *sch,
 	struct rb_node **p = &q->head.rb_node, *parent = NULL;
 	ktime_t txtime = nskb->tstamp;
 
-	if (!is_packet_valid(sch, nskb))
+	if (!is_packet_valid(sch, nskb)) {
+		report_sock_error(nskb, EINVAL, SO_EE_CODE_TXTIME_INVALID_PARAM);
 		return qdisc_drop(nskb, sch, to_free);
+	}
 
 	while (*p) {
 		struct sk_buff *skb;
@@ -175,6 +207,8 @@ static void timesortedlist_erase(struct Qdisc *sch, struct sk_buff *skb,
 	if (drop) {
 		struct sk_buff *to_free = NULL;
 
+		report_sock_error(skb, ECANCELED, SO_EE_CODE_TXTIME_MISSED);
+
 		qdisc_drop(skb, sch, &to_free);
 		kfree_skb_list(to_free);
 		qdisc_qstats_overlimit(sch);
@@ -200,7 +234,6 @@ static struct sk_buff *etf_dequeue_timesortedlist(struct Qdisc *sch)
 	now = q->get_time();
 
 	/* Drop if packet has expired while in queue. */
-	/* FIXME: Must return error on the socket's error queue */
 	if (ktime_before(skb->tstamp, now)) {
 		timesortedlist_erase(sch, skb, true);
 		skb = NULL;

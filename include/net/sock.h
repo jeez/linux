@@ -473,6 +473,7 @@ struct sock {
 	u16			sk_clockid;
 	u16			sk_txtime_flags;
 #define SK_TXTIME_DEADLINE_MASK	BIT(0)
+#define SK_TXTIME_RECV_ERR_MASK	BIT(1)
 
 	struct socket		*sk_socket;
 	void			*sk_user_data;

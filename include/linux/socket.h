@@ -85,7 +85,9 @@ struct cmsghdr {
 
 struct sock_txtime {
 	clockid_t	clockid;	/* reference clockid */
-	u16		flags;		/* bit 0: txtime in deadline_mode */
+	u16		flags;		/* bit 0: txtime in deadline_mode
+					 * bit 1: report drops on sk err queue
+					 */
 };
 
 /*

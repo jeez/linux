@@ -25,6 +25,8 @@ struct sock_extended_err {
 #define SO_EE_OFFENDER(ee)	((struct sockaddr*)((ee)+1))
 
 #define SO_EE_CODE_ZEROCOPY_COPIED	1
+#define SO_EE_CODE_TXTIME_INVALID_PARAM	2
+#define SO_EE_CODE_TXTIME_MISSED	3
 
 /**
  *	struct scm_timestamping - timestamps exposed through cmsg
