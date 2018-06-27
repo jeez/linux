@@ -56,8 +56,8 @@ static inline int validate_input_params(struct tc_etf_qopt *qopt,
 		return -ENOTSUPP;
 	}
 
-	if (qopt->clockid >= MAX_CLOCKS) {
-		NL_SET_ERR_MSG(extack, "Invalid clockid");
+	if (qopt->clockid != CLOCK_TAI) {
+		NL_SET_ERR_MSG(extack, "Invalid clockid. CLOCK_TAI must be used");
 		return -EINVAL;
 	}
 
